@@ -19,6 +19,7 @@ enum Action {
     Right,
     Up,
     Down,
+    Quit,
     Inventory,
 }
 
@@ -30,10 +31,9 @@ enum Terrain {
 }
 fn init_colors() {
     start_color();
-    init_color(COLOR_GREEN, 0, 200, 0);
     init_pair(GRASS_COLOR, COLOR_YELLOW, COLOR_GREEN);
-    init_pair(MOUNTAIN_COLOR, COLOR_WHITE, COLOR_BLACK);
-    init_pair(WATER_COLOR, COLOR_WHITE, COLOR_BLUE);
+    init_pair(MOUNTAIN_COLOR, 33, COLOR_BLACK);
+    init_pair(WATER_COLOR, 33, COLOR_BLUE);
 }
 
 fn render_terrain_spot(terrain: &Terrain) {
@@ -84,6 +84,7 @@ fn parse_input(input: i32) -> Option<Action> {
         66 => Some(Action::Up),
         65 => Some(Action::Down),
         101 => Some(Action::Inventory),
+        113 => Some(Action::Quit),
         _ => None,
     }
 }
@@ -139,14 +140,79 @@ fn take_action(action: Action, player_coords_ref: &mut Pos, map_ref: &mut HashMa
         Action::Inventory => {
             let _ = addstr("Support for inventory not yet added\n");
         }
+        Action::Quit => {
+            quit();
+        }
     }
+}
+
+fn quit() {
+    endwin();
+    std::process::exit(0);
+}
+
+fn change_color(color: i16, red_amt: i16, green_amt: i16, blue_amt: i16) {
+    let mut curr_red: i16 = 0;
+    let mut curr_green: i16 = 0;
+    let mut curr_blue: i16 = 0;
+    color_content(color, &mut curr_red, &mut curr_green, &mut curr_blue);
+    init_color(
+        color,
+        curr_red + red_amt,
+        curr_green + green_amt,
+        curr_blue + blue_amt,
+    );
 }
 
 fn place_terrain(terrain: Terrain, loc: &Pos, map_ref: &mut HashMap<Pos, Terrain>) {
     let _ = map_ref.insert(*loc, terrain);
 }
 
-//TODO: skip unneeded checks here
+fn place_terrain_chance(
+    prob: f64,
+    terrain: Terrain,
+    loc: &Pos,
+    map_ref: &mut HashMap<Pos, Terrain>,
+) {
+    //let _ = addstr(&format!("Got prob of {}", prob));
+    if rand::random::<f64>() < prob {
+        place_terrain(terrain, loc, map_ref);
+    }
+}
+
+//TODO: make sure it looks good
+//TODO: precomputed r^2?
+fn place_terrain_circle_chance(
+    terrain: Terrain,
+    center: Pos,
+    radius: i32,
+    map_ref: &mut HashMap<Pos, Terrain>,
+) {
+    for currx in -radius - 3..radius + 3 {
+        //TODO: we're going outside the radius b/c random
+        for curry in -radius - 3..radius + 3 {
+            let inness: f64 = (radius * radius) as f64
+                / ((currx as f64 + 0.5).powf(2.0) + (curry as f64 + 0.5).powf(2.0));
+            place_terrain_chance(
+                (inness / 1.0).powf(8.0), //TODO: fine tune parameters
+                //if inness >= 1.0 {
+                //    1.0
+                //} else {
+                //    (inness / 3.0).powf(2.5) //square the
+                //                             //amount to cluster successes close to the guaranteed zone
+                //},
+                terrain.clone(),
+                &Pos {
+                    x: currx + center.x,
+                    y: curry + center.y,
+                },
+                map_ref,
+            );
+        }
+    }
+}
+
+//TODO: skip unneeded checks he3e
 fn place_terrain_circle(
     terrain: Terrain,
     center: Pos,
@@ -194,7 +260,7 @@ fn game_loop() {
     let top_left = Pos { x: 995, y: 995 };
     let bot_right = Pos { x: 1005, y: 999 };
     place_terrain_rectangle(Terrain::Mountain, top_left, bot_right, &mut map);
-    place_terrain_circle(Terrain::Water, Pos { x: 1010, y: 1010 }, 6, &mut map);
+    place_terrain_circle_chance(Terrain::Water, Pos { x: 1010, y: 1010 }, 10, &mut map);
     //if map.get(&Pos { x: 1001, y: 1001 }).unwrap() == &Terrain::Mountain {
     //    let _ = addstr("Terrain placement successful");
     //} else {

@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 libc = "0.2.155"
 ncurses = "6.0.0"
+rand = "0.8.5"
