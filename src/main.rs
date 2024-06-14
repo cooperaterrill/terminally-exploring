@@ -29,6 +29,8 @@ enum Terrain {
     Water,
 }
 fn init_colors() {
+    start_color();
+    init_color(COLOR_GREEN, 0, 200, 0);
     init_pair(GRASS_COLOR, COLOR_YELLOW, COLOR_GREEN);
     init_pair(MOUNTAIN_COLOR, COLOR_WHITE, COLOR_BLACK);
     init_pair(WATER_COLOR, COLOR_WHITE, COLOR_BLUE);
@@ -54,15 +56,15 @@ fn render_terrain_spot(terrain: &Terrain) {
 }
 
 fn render(player_coords_ref: &Pos, map_ref: &mut HashMap<Pos, Terrain>) {
-    start_color();
-    init_colors();
+    //start_color();
+    //init_colors();
     for row in 0i32..RENDER_SIZE as i32 {
         let myy = player_coords_ref.y + row - (RENDER_SIZE as i32) / 2;
         for col in 0i32..RENDER_SIZE as i32 {
             let myx = player_coords_ref.x + col - (RENDER_SIZE as i32) / 2;
 
             if myy == player_coords_ref.y && myx == player_coords_ref.x {
-                //color_set(GRASS_COLOR);
+                color_set(GRASS_COLOR);
                 let _ = addstr(" @ ");
                 //let _ = addstr("RENDERING PLAYE");
                 continue;
@@ -219,5 +221,6 @@ fn game_loop() {
 
 fn main() {
     initscr();
+    init_colors();
     game_loop();
 }
