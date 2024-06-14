@@ -1,5 +1,4 @@
 extern crate ncurses;
-use colored::Colorize;
 
 use ncurses::*;
 use std::collections::HashMap;
@@ -39,12 +38,12 @@ fn render_terrain_spot(terrain: &Terrain) {
     match terrain {
         Terrain::Grass => {
             color_set(GRASS_COLOR);
-            let _ = addstr(&"   ".green().on_yellow());
+            let _ = addstr("   ");
             //let _ = addstr("RENDERING GRASS");
         }
         Terrain::Mountain => {
             color_set(MOUNTAIN_COLOR);
-            let _ = addstr(&" ^ ".blue().on_white());
+            let _ = addstr(" ^ ");
             //let _ = addstr("RENDERING MOUNT");
         }
         Terrain::Water => {
