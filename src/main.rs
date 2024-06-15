@@ -4,9 +4,12 @@ use ncurses::*;
 use std::collections::HashMap;
 //use std::io::{self, stdin, stdout, Read, Write};
 const RENDER_SIZE: usize = 41;
-const GRASS_COLOR: i16 = 1;
-const MOUNTAIN_COLOR: i16 = 2;
-const WATER_COLOR: i16 = 3;
+const GRASS_PAIR: i16 = 1;
+const MOUNTAIN_PAIR: i16 = 2;
+const WATER_PAIR: i16 = 3;
+const COLOR_MAX_WHITE: i16 = 33;
+const COLOR_DARK_BLUE: i16 = 34;
+const COLOR_DARK_GREEN: i16 = 35;
 
 #[derive(Hash, Eq, PartialEq, Clone, Copy)]
 struct Pos {
@@ -31,25 +34,28 @@ enum Terrain {
 }
 fn init_colors() {
     start_color();
-    init_pair(GRASS_COLOR, COLOR_YELLOW, COLOR_GREEN);
-    init_pair(MOUNTAIN_COLOR, 33, COLOR_BLACK);
-    init_pair(WATER_COLOR, 33, COLOR_BLUE);
+    init_color(COLOR_MAX_WHITE, 1000, 1000, 1000);
+    init_color(COLOR_DARK_BLUE, 200, 200, 800);
+    init_color(COLOR_DARK_GREEN, 200, 800, 200);
+    init_pair(GRASS_PAIR, COLOR_YELLOW, COLOR_DARK_GREEN);
+    init_pair(MOUNTAIN_PAIR, COLOR_MAX_WHITE, COLOR_BLACK);
+    init_pair(WATER_PAIR, COLOR_BLUE, COLOR_DARK_BLUE);
 }
 
 fn render_terrain_spot(terrain: &Terrain) {
     match terrain {
         Terrain::Grass => {
-            color_set(GRASS_COLOR);
+            color_set(GRASS_PAIR);
             let _ = addstr("   ");
             //let _ = addstr("RENDERING GRASS");
         }
         Terrain::Mountain => {
-            color_set(MOUNTAIN_COLOR);
+            color_set(MOUNTAIN_PAIR);
             let _ = addstr(" ^ ");
             //let _ = addstr("RENDERING MOUNT");
         }
         Terrain::Water => {
-            color_set(WATER_COLOR);
+            color_set(WATER_PAIR);
             let _ = addstr(" ~ ");
         }
     }
@@ -64,7 +70,7 @@ fn render(player_coords_ref: &Pos, map_ref: &mut HashMap<Pos, Terrain>) {
             let myx = player_coords_ref.x + col - (RENDER_SIZE as i32) / 2;
 
             if myy == player_coords_ref.y && myx == player_coords_ref.x {
-                color_set(GRASS_COLOR);
+                color_set(GRASS_PAIR);
                 let _ = addstr(" @ ");
                 //let _ = addstr("RENDERING PLAYE");
                 continue;
@@ -246,7 +252,7 @@ fn place_terrain_rectangle(
 ) {
     for currx in top_left_corner.x..bot_right_corner.x + 1 {
         for curry in top_left_corner.y..bot_right_corner.y + 1 {
-            let _ = addstr(format!("Rendered at {}, {}\n", currx, curry).as_str());
+            //let _ = addstr(format!("Rendered at {}, {}\n", currx, curry).as_str());
             place_terrain(terrain.clone(), &Pos { x: currx, y: curry }, map_ref);
         }
     }
@@ -260,13 +266,14 @@ fn game_loop() {
     let top_left = Pos { x: 995, y: 995 };
     let bot_right = Pos { x: 1005, y: 999 };
     place_terrain_rectangle(Terrain::Mountain, top_left, bot_right, &mut map);
-    place_terrain_circle_chance(Terrain::Water, Pos { x: 1010, y: 1010 }, 10, &mut map);
+    place_terrain_circle_chance(Terrain::Water, Pos { x: 1010, y: 1010 }, 5, &mut map);
     //if map.get(&Pos { x: 1001, y: 1001 }).unwrap() == &Terrain::Mountain {
     //    let _ = addstr("Terrain placement successful");
     //} else {
     //    let _ = addstr("Couldn't add terrain");
     //}
     refresh();
+    //TODO: game plan: randomly generate terrain in the unrendered direction when rendered
     loop {
         let input: i32 = getch();
         clear();
