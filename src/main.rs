@@ -6,8 +6,8 @@ use std::collections::{HashMap, HashSet};
 const RENDER_SIZE: usize = 41;
 
 const CHUNK_SIZE: i32 = 300;
-const LAKE_CHANCE: f64 = 0.005;
-const MOUNTAIN_RANGE_CHANCE: f64 = 0.02;
+const LAKE_CHANCE: f64 = 0.001;
+const MOUNTAIN_RANGE_CHANCE: f64 = 0.003;
 
 const GRASS_PAIR: i16 = 1;
 const MOUNTAIN_PAIR: i16 = 2;
@@ -22,6 +22,7 @@ struct Pos {
     y: i32,
 }
 
+///Type representing the possible actions a player can take
 enum Action {
     Left,
     Right,
@@ -31,6 +32,7 @@ enum Action {
     Inventory,
 }
 
+///Type representing the possible states a square can have
 #[derive(Eq, PartialEq, Clone)]
 enum Terrain {
     Grass,
@@ -44,6 +46,7 @@ fn main() {
     game_loop();
 }
 
+///Initializes custom ncurses colors and necessary color pairs
 fn init_colors() {
     start_color();
     init_color(COLOR_MAX_WHITE, 1000, 1000, 1000);
@@ -54,6 +57,7 @@ fn init_colors() {
     init_pair(WATER_PAIR, COLOR_BLUE, COLOR_DARK_BLUE);
 }
 
+///Initializes state variables and infinitly loops through a parse-act-render cycle
 fn game_loop() {
     let mut player_coords: Pos = Pos { x: 1000, y: 1000 };
     let mut map: HashMap<Pos, Terrain> = HashMap::new();
@@ -90,6 +94,7 @@ fn game_loop() {
     }
 }
 
+///Parses a 32-bit input and returns the corresponding action, or None if the key is unmapped
 fn parse_input(input: i32) -> Option<Action> {
     match input {
         68 => Some(Action::Left),
@@ -102,6 +107,7 @@ fn parse_input(input: i32) -> Option<Action> {
     }
 }
 
+///Tries to take specified action if possible
 fn take_action(
     action: Action,
     player_coords_ref: &mut Pos,
@@ -162,6 +168,10 @@ fn take_action(
     }
 }
 
+///Tries to move player if the goal location is Terrain::Grass.
+///
+///If move is successful, generates chunks in 3x3 chunk grid around current chunk if they haven't
+///been done yet
 fn try_move(
     goal_coords: Pos,
     player_coords_ref: &mut Pos,
@@ -188,7 +198,9 @@ fn try_move(
         }
     }
 }
-fn render(player_coords_ref: &Pos, map_ref: &mut HashMap<Pos, Terrain>) {
+
+///Renders the player and their surrounding environment
+fn render(player_coords_ref: &Pos, map_ref: &HashMap<Pos, Terrain>) {
     //start_color();
     //init_colors();
     for row in 0i32..RENDER_SIZE as i32 {
@@ -210,6 +222,7 @@ fn render(player_coords_ref: &Pos, map_ref: &mut HashMap<Pos, Terrain>) {
     }
 }
 
+///Renders a single location with the specified Terrain
 fn render_terrain_spot(terrain: &Terrain) {
     match terrain {
         Terrain::Grass => {
@@ -229,6 +242,10 @@ fn render_terrain_spot(terrain: &Terrain) {
     }
 }
 
+///Generates a chunk (represented by its top-left corner), placing Mountain ranges and rugged Water
+///circles (lakes) randomly.
+///
+///If special Terrain is not generated in a location, it defaults to Grass
 fn generate_chunk(
     top_left_corner: Pos,
     map_ref: &mut HashMap<Pos, Terrain>,
@@ -238,8 +255,9 @@ fn generate_chunk(
         for curry in top_left_corner.y..top_left_corner.y + CHUNK_SIZE {
             let mut rand: f64 = rand::random::<f64>();
 
+            //TODO: lakes generate impossibly small too
             if rand < LAKE_CHANCE {
-                let radius: i32 = rand::random::<i32>() % 6 + 1;
+                let radius: i32 = rand::random::<i32>() % 6 + 4;
                 generate_terrain_circle_chance(
                     Terrain::Water,
                     Pos { x: currx, y: curry },
@@ -252,8 +270,10 @@ fn generate_chunk(
             rand = rand::random::<f64>();
             if rand < MOUNTAIN_RANGE_CHANCE {
                 //let the current pos be the top left
-                let width: i32 = rand::random::<i32>() % 40 - 20;
-                let length: i32 = rand::random::<i32>() % 40 - 20;
+                //because they're place randomly, direction doesn't actually matter
+                //TODO: somehow skinnies still generate??
+                let width: i32 = rand::random::<i32>() % 7 + 3;
+                let length: i32 = rand::random::<i32>() % 7 + 2;
                 generate_terrain_rectangle(
                     Terrain::Mountain,
                     Pos { x: currx, y: curry },
@@ -282,10 +302,12 @@ fn generate_chunk(
     generated_chunks_ref.insert(top_left_corner);
 }
 
+/// Places the specified terrain
 fn generate_terrain(terrain: Terrain, loc: &Pos, map_ref: &mut HashMap<Pos, Terrain>) {
     let _ = map_ref.insert(*loc, terrain);
 }
 
+/// Places the specified terrain with the specified probability
 fn generate_terrain_chance(
     prob: f64,
     terrain: Terrain,
@@ -298,8 +320,10 @@ fn generate_terrain_chance(
     }
 }
 
+///Generates terrain in a circle-like shape, clustering towards the center.
+///
+///This does not necessarily lead to a contiguous shape.
 //TODO: make sure it looks good
-//TODO: precomputed r^2?
 //TODO: STOP CREATING NEW POS
 fn generate_terrain_circle_chance(
     terrain: Terrain,
@@ -307,11 +331,12 @@ fn generate_terrain_circle_chance(
     radius: i32,
     map_ref: &mut HashMap<Pos, Terrain>,
 ) {
+    let r2: f64 = (radius * radius) as f64;
     for currx in -radius - 3..radius + 3 {
         //TODO: we're going outside the radius b/c random
         for curry in -radius - 3..radius + 3 {
-            let inness: f64 = (radius * radius) as f64
-                / ((currx as f64 + 0.5).powf(2.0) + (curry as f64 + 0.5).powf(2.0));
+            let inness: f64 =
+                r2 / ((currx as f64 + 0.5).powf(2.0) + (curry as f64 + 0.5).powf(2.0));
             generate_terrain_chance(
                 (inness / 1.0).powf(8.0), //TODO: fine tune parameters
                 //if inness >= 1.0 {
@@ -331,6 +356,7 @@ fn generate_terrain_circle_chance(
     }
 }
 
+///Generates terrain in the rectangle defined by the specified coordinates
 //TODO: optimize to not create new pos every time
 fn generate_terrain_rectangle(
     terrain: Terrain,
@@ -346,6 +372,7 @@ fn generate_terrain_rectangle(
     }
 }
 
+///Generates terrain in the circle defined by the specified center and radius
 //TODO: skip unneeded checks he3e, stop creating new poses
 fn generate_terrain_circle(
     terrain: Terrain,
@@ -371,6 +398,9 @@ fn generate_terrain_circle(
     }
 }
 
+///Calculates the chunk of the specific location.
+///
+///Chunks are represented by their upper-most left-most square.
 fn calc_chunk(loc: &Pos) -> Pos {
     return Pos {
         x: CHUNK_SIZE * (loc.x / CHUNK_SIZE),
@@ -378,6 +408,7 @@ fn calc_chunk(loc: &Pos) -> Pos {
     };
 }
 
+///Changes the ncurses color represented by **color** by the RGB amounts provided
 fn change_color(color: i16, red_amt: i16, green_amt: i16, blue_amt: i16) {
     let mut curr_red: i16 = 0;
     let mut curr_green: i16 = 0;
@@ -391,6 +422,7 @@ fn change_color(color: i16, red_amt: i16, green_amt: i16, blue_amt: i16) {
     );
 }
 
+///Closes the game
 fn quit() {
     endwin();
     std::process::exit(0);
