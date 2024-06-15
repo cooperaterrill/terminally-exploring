@@ -1,5 +1,7 @@
 //extern crate ncurses;
 //TODO: massive lag spike when entering new chunk (probably reduce chunk size to smooth)
+//TODO: fix buggy generation
+//TODO: refactor into separate files
 
 use ncurses::*;
 use std::collections::{HashMap, HashSet};
